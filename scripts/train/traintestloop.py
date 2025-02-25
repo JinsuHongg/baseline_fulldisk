@@ -1,7 +1,6 @@
 import torch
 import numpy as np
 
-
 def train_loop(dataloader, model, loss_fn, optimizer=None, lr_scheduler=None):
     # Set the model to training mode - important for batch normalization and dropout layers
     # Unnecessary in this situation but added for best practices
@@ -13,7 +12,7 @@ def train_loop(dataloader, model, loss_fn, optimizer=None, lr_scheduler=None):
     train_loss = 0
     for batch, (X, y) in enumerate(dataloader):
         
-        X, y = X.cuda(), y.cuda()
+        X, y = X.device(), y.device()
         # Compute prediction and loss
         pred = model(X)
         _, predictions = torch.max(pred, 1)
@@ -55,7 +54,7 @@ def test_loop(dataloader, model, loss_fn):
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
         for X, y in dataloader:
-            X, y = X.cuda(), y.cuda()
+            X, y = X.device(), y.device()
             pred = model(X)
             _, predictions = torch.max(pred, 1)
             

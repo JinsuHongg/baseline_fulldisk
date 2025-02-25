@@ -29,6 +29,18 @@ class Mobilenet(nn.Module):
         x = self.model(x)
         return x
     
+class ResNet18(nn.Module):
+    def __init__(self) -> None:
+        super(ResNet18, self).__init__()
+
+        # load pretrained architecture from pytorch
+        torch.hub._validate_not_a_forked_repo=lambda a,b,c: True
+        self.model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet18', pretrained = True)
+        self.model.fc = nn.Linear(512 , 2) #* torchvision.models.resnet.BasicBlock.expansion
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.model(x)
+        return x
 
 class ResNet34(nn.Module):
     def __init__(self) -> None:

@@ -1,5 +1,6 @@
 #In this python program, the flare catalog(with cme) is used as the label source.
 #To create the label, log scale flare intensity is used
+import glob
 import argparse
 import os.path, os
 import pandas as pd
@@ -7,7 +8,7 @@ import pandas as pd
 
 #In this function, to create the label, the maximum intensity of flare between midnight to midnight
 #and noon to noon with respective date is used.
-def hourly_obs(df_fl: pd.DataFrame, img_dir, stop, class_type = 'bin'):
+def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
 
     # Datetime 
     df_fl['start_time'] = pd.to_datetime(df_fl['start_time'], format = '%Y-%m-%d %H:%M:%S')
@@ -15,43 +16,42 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, stop, class_type = 'bin'):
 
     #List to store intermediate results
     lis = []
-    cols = ['Timestamp', 'GOES_cls', 'Label']
+    cols = ['Timestamp', 'goes_class', 'label']
 
-    #Loop to check max from midnight to midnight and noon to noon
-    for i in range(len(df_rec)):
+    for year in range(start, stop + 1):
+        for month in range(1, 13):
+            for day in range(1, 32):
+                dir = img_dir + f'{year}/{month:02d}/{day:02d}/*.jpg'
+                files = sorted(glob.glob(dir))
 
-        #Date with max intensity of flare with in the 24 hour window
-        window_start = df_rec.iloc[i, 0] # timestamp
-        window_end = window_start + pd.Timedelta(hours = 23, minutes = 59, seconds = 59)
+                for file in files:
+                    window_start = pd.to_datetime(file.split('HMI.m')[1][:-4], format="%Y.%m.%d_%H.%M.%S")
+                    window_end = window_start + pd.Timedelta(hours = 23, minutes = 59, seconds = 59)
 
-        if window_start > stop:
-            break
-        
-        emp = df_fl[ (df_fl.start > window_start) & (df_fl.start <= window_end) ].sort_values('fl_goescls', ascending = False).head(1).squeeze(axis = 0)
-        if pd.Series(emp.fl_goescls).empty:
-            ins = ''
-            target = 0
-        else: 
-            ins = emp.fl_goescls
-            
-            if class_type == 'bin':
-                if ins >= "M1.0": # FQ and A class flares
-                    target = 1
-                else:
-                    target = 0
-            elif class_type == 'multi':
+                    emp = df_fl[ (df_fl.start_time > window_start) & (df_fl.start_time <= window_end) ].sort_values('goes_class', ascending = False).head(1).squeeze(axis = 0)
+                    if pd.Series(emp.goes_class).empty:
+                        ins = 'FQ'
+                        target = 0
+                    else: 
+                        ins = emp.goes_class
+                        
+                        if class_type == 'bin':
+                            if ins >= "M1.0": # FQ and A class flares
+                                target = 1
+                            else:
+                                target = 0
+                        elif class_type == 'multi':
 
-                if ins >= "M1.0": # FQ and A class flares
-                    target = 3
-                elif ins >= "C1.0":
-                    target = 2
-                elif ins >= "B1.0":
-                    target = 1
-                else:
-                    target = 0
-            
+                            if ins >= "M1.0": # FQ and A class flares
+                                target = 3
+                            elif ins >= "C1.0":
+                                target = 2
+                            elif ins >= "B1.0":
+                                target = 1
+                            else:
+                                target = 0
 
-        lis.append([window_start, ins, target])
+                    lis.append([window_start, ins, target])
         
     df_out = pd.DataFrame(lis, columns = cols)
 
@@ -62,38 +62,34 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, stop, class_type = 'bin'):
 
 
 #Creating time-segmented 4 tri-monthly partitions
-def create_partitions(df, savepath = '/', class_type = 'bin'):
-    search_list = [['01', '02', '03'], ['04', '05', '06'], ['07', '08', '09'], ['10', '11', '12']]
-    for i in range(4):
+def split_dataset(df, savepath = '/', class_type = 'bin'):
+    search_list = [['2011', '2012', '2013'], ['2014']]
+    for i in range(2):
         search_for = search_list[i]
-        mask = df['Timestamp'].apply(lambda row: row[5:7]).str.contains('|'.join(search_for))
+        mask = df['Timestamp'].apply(lambda row: row[0:4]).str.contains('|'.join(search_for))
         partition = df[mask]
-        print(partition['GOES_cls'].value_counts())
+        print(partition['label'].value_counts())
         
-        # Make directory 
-        if not os.path.isdir(savepath):
-            os.mkdir(savepath)
-            print('Created directory:', savepath)
             
         # Dumping the dataframe into CSV with label as Date and goes_class as intensity
-        partition.to_csv(savepath + f'24image_{class_type}_GOES_classification_Partition{i + 1}.csv',\
-                         index = False, header = True, columns = ['Timestamp', 'GOES_cls', 'Label'])
+        flag = 'train' if i == 0 else 'test'
+        partition.to_csv(savepath + f'/24image_{class_type}_class_{flag}.csv',\
+                         index = False, header = True, columns = ['Timestamp', 'goes_class', 'label'])
 
 
 if __name__ == "__main__":
 
     #Load Original source for Goes Flare X-ray Flux 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="/workspace/", help="Path to data folder")
-    parser.add_argument("--project_path", type=str, default="/workspace/", help="Path to project folder")
+    parser.add_argument("--data_path", type=str, default="/workspace/data/", help="Path to data folder")
+    parser.add_argument("--project_path", type=str, default="/workspace/Project/baseline_fulldisk", help="Path to project folder")
+    parser.add_argument("--start", type=int, default='2011', help="start time of the dataset")
+    parser.add_argument("--end", type=int, default='2014', help="end time of the dataset")
     args = parser.parse_args()
     
-    
-    df_fl = pd.read_csv(args.data_path + 'MultiwayIntegration_2010_to_2018_conf_rxfi.csv', usecols = ['start_time', 'goes_class'])
+    df_fl = pd.read_csv(args.data_path + 'catalog/MultiwayIntegration_2010_to_2018_conf_rxfi.csv', usecols = ['start_time', 'goes_class'])
     savepath = os.getcwd()
-    
-    stop = pd.to_datetime('2024-07-31 23:59:59', format = '%Y-%m-%d %H:%M:%S')
 
     #Calling functions in order
-    df_res = hourly_obs(df_fl = df_fl, stop = stop, class_type = 'bin')
-    create_partitions(df_res, savepath = savepath, class_type = 'bin')
+    df_res = hourly_obs(df_fl = df_fl, img_dir = args.data_path + 'hmi_jpgs_512/', start = args.start, stop = args.end, class_type = 'bin')
+    split_dataset(df_res, savepath = savepath, class_type = 'bin')

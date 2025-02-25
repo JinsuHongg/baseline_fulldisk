@@ -1,21 +1,17 @@
 #In this python program, the flare catalog(with cme) is used as the label source.
 #To create the label, log scale flare intensity is used
-import glob
+import argparse
 import os.path, os
 import pandas as pd
 # pd.options.mode.chained_assignment = None 
 
 #In this function, to create the label, the maximum intensity of flare between midnight to midnight
 #and noon to noon with respective date is used.
-def hourly_obs(df_fl, df_rec, stop, class_type = 'bin'):
+def hourly_obs(df_fl: pd.DataFrame, img_dir, stop, class_type = 'bin'):
 
     # Datetime 
-    df_fl['start'] = pd.to_datetime(df_fl['event_starttime'], format = '%Y-%m-%d %H:%M:%S')
+    df_fl['start_time'] = pd.to_datetime(df_fl['start_time'], format = '%Y-%m-%d %H:%M:%S')
 
-    # define dataset without missing
-    df_rec['Timestamp'] = pd.to_datetime(df_rec['Timestamp'], format = '%Y.%m.%d_%H.%M.%S')
-    df_rec.query('EUV304 != 0 & HMI_Mag != 0 & HMI_CTnuum != 0', inplace = True)
-    # print(df_rec)
 
     #List to store intermediate results
     lis = []
@@ -83,44 +79,21 @@ def create_partitions(df, savepath = '/', class_type = 'bin'):
         partition.to_csv(savepath + f'24image_{class_type}_GOES_classification_Partition{i + 1}.csv',\
                          index = False, header = True, columns = ['Timestamp', 'GOES_cls', 'Label'])
 
-#Creating time-segmented 4-Fold CV Dataset, where 9 months of data is used for training and rest 3 for validation
-def create_CVDataset(df, savepath = '/', class_type = 'bin'):
-    search_list = [['01', '02', '03'], ['04', '05', '06'], ['07', '08', '09'], ['10', '11', '12']]
-    for i in range(4):
-        search_for = search_list[i]
-        mask = df['Timestamp'].apply(lambda row: row[5:7]).str.contains('|'.join(search_for))
-        train = df[~mask]
-        val = df[mask]
-        print(train['GOES_cls'].value_counts())
-        print(val['GOES_cls'].value_counts())
-        
-        # Make directory
-        if not os.path.isdir(savepath):
-            os.mkdir(savepath)
-            print('Created directory:', savepath)
-        
-        # Dumping the dataframe into CSV with label as Date and goes_class as intensity
-        train.to_csv(savepath+ f'24image_{class_type}_GOES_classification_Fold{i+1}_train.csv',\
-                     index = False, header = True, columns = ['Timestamp', 'GOES_cls', 'Label'])
-        
-        val.to_csv(savepath + f'24image_{class_type}_GOES_classification_Fold{i+1}_val.csv',\
-                   index = False, header = True, columns = ['Timestamp', 'GOES_cls', 'Label'])
-
-
 
 if __name__ == "__main__":
 
     #Load Original source for Goes Flare X-ray Flux 
-    df_fl = pd.read_csv ('/workspace/Project/Multi_imagery_SFPred/Dataset/flare_catalog_2010-2024.csv', 
-                            usecols = ['event_starttime', 'fl_goescls'])
-
-    df_rec = pd.read_csv ('/workspace/Project/Multi_imagery_SFPred/Dataset/Missing_info.csv')      
-
-    savepath = '/workspace/Project/Multi_imagery_SFPred/Dataset/label/'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_path", type=str, default="/workspace/", help="Path to data folder")
+    parser.add_argument("--project_path", type=str, default="/workspace/", help="Path to project folder")
+    args = parser.parse_args()
+    
+    
+    df_fl = pd.read_csv(args.data_path + 'MultiwayIntegration_2010_to_2018_conf_rxfi.csv', usecols = ['start_time', 'goes_class'])
+    savepath = os.getcwd()
     
     stop = pd.to_datetime('2024-07-31 23:59:59', format = '%Y-%m-%d %H:%M:%S')
 
     #Calling functions in order
-    df_res = hourly_obs(df_fl = df_fl, df_rec = df_rec, stop = stop, class_type = 'multi')
-    create_partitions(df_res, savepath = savepath, class_type = 'multi')
-    create_CVDataset(df_res, savepath = savepath, class_type = 'multi')
+    df_res = hourly_obs(df_fl = df_fl, stop = stop, class_type = 'bin')
+    create_partitions(df_res, savepath = savepath, class_type = 'bin')

@@ -1,4 +1,6 @@
 #etc
+*.npy
+*.pth
 *.csv
 *.jpeg
 *.png

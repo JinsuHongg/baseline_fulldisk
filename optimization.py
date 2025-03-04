@@ -33,13 +33,14 @@ print('2nd process, loading data...')
 # create parser here
 parser = argparse.ArgumentParser(description="FullDiskModelTrainer")
 # parser.add_argument("--fold", type = int, default = 1, help = "Fold Selection")
-parser.add_argument("--epochs", type = int, default = 15, help = "number of epochs")
+parser.add_argument("--epochs", type = int, default = 30, help = "number of epochs")
 parser.add_argument("--batch_size", type = int, default = 64, help = "batch size")
-parser.add_argument("--lr", type = float, default = 1e-6, help = "learning rate")
-parser.add_argument("--max_lr", type = float, default = 1e-3, help = "MAX learning rate")
+parser.add_argument("--lr", type = float, default = 1e-9, help = "learning rate")
+parser.add_argument("--max_lr", type = float, default = 1e-4, help = "MAX learning rate")
 parser.add_argument("--models", type = str, default = 'Alexnet', help = "Enter Mobilenet, Resnet18, Resnet34, Resnet50")
 parser.add_argument('--class_wt', type = list, default = list, help = "class weight on each class")
 parser.add_argument('--data_dir', type = str, default = '/workspace/data/hmi_jpgs_512')
+parser.add_argument('--filetag', type=str, default='over-aug')
 
 args = parser.parse_args()
 
@@ -94,26 +95,36 @@ df_test['Timestamp'] = pd.to_datetime(df_test['Timestamp'], format = '%Y-%m-%d %
 positive_ins = df_train.loc[df_train['label']==1, :]
 negative_ins = df_train.loc[df_train['label']==0, :]
 df_pos = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, normalization = True)
-df_rotation = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, transform=rotation, normalization = True)
-df_vrflip = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, transform=vr_flip, normalization = True)
-df_hrflip = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, transform=hr_flip, normalization = True)
+df_rotation = SolarFlSets(annotations_df = positive_ins, num_sample=2000, img_dir = img_dir, transform=rotation, normalization = True)
+df_vrflip = SolarFlSets(annotations_df = positive_ins, num_sample=2000, img_dir = img_dir, transform=vr_flip, normalization = True)
+df_hrflip = SolarFlSets(annotations_df = positive_ins, num_sample=2000, img_dir = img_dir, transform=hr_flip, normalization = True)
+df_over = SolarFlSets(annotations_df = positive_ins, num_sample=2000, img_dir = img_dir, normalization = True)
+
 df_neg = SolarFlSets(annotations_df = negative_ins, img_dir = img_dir, normalization = True)
-data_train = ConcatDataset([df_pos, df_rotation, df_vrflip, df_hrflip, df_neg])
+df_n_rotation = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, transform=rotation, normalization = True)
+df_n_vrflip = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, transform=vr_flip, normalization = True)
+df_n_hrflip = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, transform=hr_flip, normalization = True)
+# df_n_over = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, normalization = True)
+
+data_train = ConcatDataset([df_pos, df_rotation, df_vrflip, df_hrflip, df_over, 
+                            df_neg, df_n_rotation, df_n_vrflip, df_n_hrflip])
 # testset
 data_test = SolarFlSets(annotations_df = df_test, img_dir = img_dir, normalization = True)
 
-print(f'positive samples: {len(positive_ins)*4}, negative samples: {len(negative_ins)}, imbalance ratio: {len(positive_ins)*4/len(negative_ins):.2f}')
+num_pos = len(df_pos)+len(df_rotation)+len(df_vrflip)+len(df_hrflip)+len(df_over)
+num_neg = len(df_neg)+len(df_n_rotation)+len(df_n_vrflip)+len(df_n_hrflip)
+print(f'positive samples: {num_pos}, negative samples: {num_neg}, imbalance ratio: {num_pos/num_neg:.2f}')
 
 # Data loader
 train_dataloader = DataLoader(data_train, batch_size = args.batch_size, shuffle = True) # num_workers = 0, pin_memory = True, 
 test_dataloader = DataLoader(data_test, batch_size = args.batch_size, shuffle = False) # num_workers = 0, pin_memory = True,
 
 # Cross-validatation with optimization ( total = 4folds X Learning rate sets X weight decay sets )
+training_result = []
+iter = 0
 for wt in weight_decay:
     for cls_wt in class_weight:
     
-        training_result = []
-
         '''
         [ Grid search start here ] 
         - Be careful with  result array, model, loss, and optimizer
@@ -139,7 +150,7 @@ for wt in weight_decay:
         
 
         # model setting
-        model = nn.DataParallel(net, device_ids = [0, 1]).to(device)
+        model = nn.DataParallel(net, device_ids = [0]).to(device)
 
         # class weight
         device = next(model.parameters()).device
@@ -154,6 +165,7 @@ for wt in weight_decay:
                     anneal_strategy = 'cos')
 
         # initiate variable for finding best epoch
+        iter += 1
         best_loss = float("inf") 
         best_epoch = 0 
         best_hsstss = 0
@@ -167,19 +179,19 @@ for wt in weight_decay:
 
             train_loss, train_result = train_loop(train_dataloader, model=model, loss_fn=loss_fn, optimizer=optimizer, lr_scheduler=scheduler)
             test_loss, test_result = test_loop(test_dataloader,  model=model, loss_fn=loss_fn)
-            table = confusion_matrix(test_result[:, 1], test_result[:, 0])
+            table = confusion_matrix(test_result[:, 1], test_result[:, 0]).ravel()
             HSS_score = HSS2(table)
             TSS_score = TSS(table)
             F1_score = f1_score(test_result[:, 1], test_result[:, 0], average='macro')
             
-            # time consumption and report R-squared values.
-            duration = (time.time() - t0)/60
-            print(f'Epoch {t+1}: Train loss: {train_loss:.4f}, Test loss: {test_loss:.4f}, HSS: {HSS_score:.4f}, TSS: {TSS_score:.4f}, F1: {F1_score:.4f}, Duration(min):  {duration:.2f}')
-                                        
             # trace score and predictions
+            duration = (time.time() - t0)/60
             actual_lr = optimizer.param_groups[0]['lr']
             training_result.append([t, actual_lr, wt, cls_wt, train_loss, test_loss, HSS_score, TSS_score, F1_score, duration])
             torch.cuda.empty_cache()
+
+            # time consumption and report R-squared values.
+            print(f'Epoch {t+1}: Lr: {actual_lr:.3e}, Train loss: {train_loss:.4f}, Test loss: {test_loss:.4f}, HSS: {HSS_score:.4f}, TSS: {TSS_score:.4f}, F1: {F1_score:.4f}, Duration(min):  {duration:.2f}')
 
             check_hsstss = (HSS_score * TSS_score)**0.5
             if best_hsstss < check_hsstss:
@@ -187,7 +199,7 @@ for wt in weight_decay:
                 best_epoch = t+1
                 best_loss = test_loss
 
-                PATH = crr_dir + 'results/trained/' + f"{args.models}_{year}{month:02d}_train2011to2013_test2024.pth"
+                PATH = crr_dir + 'results/trained/' + f"{args.models}_{year}{month:02d}_train2011to2013_test2024_{args.filetag}_{iter}.pth"
             # save model
                 torch.save({
                         'epoch': t,
@@ -201,23 +213,22 @@ for wt in weight_decay:
                         }, PATH)
                 
                 # save prediction array
-                pred_path = crr_dir + 'results/prediction/' + f'{args.models}_{year}{month:02d}_train2011to2013_test2024.npy'
-                   
+                pred_path = crr_dir + 'results/prediction/' + f'{args.models}_{year}{month:02d}_train2011to2013_test2024_{args.filetag}_{iter}.npy'
+                
                 with open(pred_path, 'wb') as f:
                     train_log = np.save(f, train_result)
                     test_log = np.save(f, test_result)
 
-    training_result.append([f'Hyper parameters: batch_size: {args.batch_size}, number of epoch: {args.epochs}, initial learning rate: {args.lr}'])
+training_result.append([f'Hyper parameters: batch_size: {args.batch_size}, number of epoch: {args.epochs}, initial learning rate: {args.lr}'])
 
-    # save the results
-    #print("Saving the model's result")
-    df_result = pd.DataFrame(training_result, columns=['Epoch', 'Train_p', 'Test_p', 
-                                                        'learning rate', 'weight decay', 'class weight', 'Train_loss', 'Test_loss',
-                                                        'HSS', 'TSS', 'F1_macro', 'Training-testing time(min)'])
-    
-    total_save_path = crr_dir + 'results/validation/' + f'{args.models}_{year}{month:02d}_validation_results.csv'
-  
-    print('Save file here:', total_save_path)
-    df_result.to_csv(total_save_path, index = False) 
+# save the results
+#print("Saving the model's result")
+df_result = pd.DataFrame(training_result, columns=['Epoch', 'learning rate', 'weight decay', 'class weight', 'Train_loss', 'Test_loss',
+                                                    'HSS', 'TSS', 'F1_macro', 'Training-testing time(min)'])
+
+total_save_path = crr_dir + 'results/validation/' + f'{args.models}_{year}{month:02d}_validation_{args.filetag}_results.csv'
+
+print('Save file here:', total_save_path)
+df_result.to_csv(total_save_path, index = False) 
         
 print("Done!")

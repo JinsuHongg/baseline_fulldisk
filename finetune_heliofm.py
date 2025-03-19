@@ -154,7 +154,7 @@ for wt in args.weight_decay:
         # trace score and predictions
         duration = (time.time() - t0)/60
         actual_lr = optimizer.param_groups[0]['lr']
-        training_result.append([t, actual_lr, wt, cls_wt, train_loss, test_loss, HSS_score, TSS_score, F1_score, duration])
+        training_result.append([t, actual_lr, wt, train_loss, test_loss, HSS_score, TSS_score, F1_score, duration])
         torch.cuda.empty_cache()
 
         # time consumption and report R-squared values.
@@ -189,7 +189,7 @@ training_result.append([f'Hyper parameters: batch_size: {args.batch_size}, numbe
 
 # save the results
 #print("Saving the model's result")
-df_result = pd.DataFrame(training_result, columns=['Epoch', 'learning rate', 'weight decay', 'class weight', 'Train_loss', 'Test_loss',
+df_result = pd.DataFrame(training_result, columns=['Epoch', 'learning rate', 'weight decay', 'Train_loss', 'Test_loss',
                                                     'HSS', 'TSS', 'F1_macro', 'Training-testing time(min)'])
 
 total_save_path = crr_dir + 'results/validation/' + f'{args.models}_{year}{month:02d}_validation_{args.filetag}_results.csv'

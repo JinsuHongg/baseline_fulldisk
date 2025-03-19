@@ -25,12 +25,12 @@ def get_args(
     parser.add_argument("--test_set", type=int, default=4)
     parser.add_argument("--file_tag", type=str, default="spectformer")
     # Optimization arguments
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-5)
     parser.add_argument("--max_lr", type=float, default=1e-6)
     parser.add_argument("--div_factor", type=int, default=100)
-    parser.add_argument("--class_weight", type=list, default=[1, 3, 6])
+    parser.add_argument("--class_weight", type=list, default=[1, 3])
     parser.add_argument("--weight_decay", type=float, nargs="+", default=[0, 0.0001, 0.001])
     args = parser.parse_args()
     

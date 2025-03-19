@@ -16,15 +16,15 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
 
     #List to store intermediate results
     lis = []
-    cols = ['Timestamp', 'goes_class', 'label']
-
     for year in range(start, stop + 1):
         for month in range(1, 13):
+            print(f"{year}:{month:02d} processing ...")
             for day in range(1, 32):
                 dir = img_dir + f'{year}/{month:02d}/{day:02d}/*.jpg'
                 files = sorted(glob.glob(dir))
 
                 for file in files:
+                    # print(file)
                     window_start = pd.to_datetime(file.split('HMI.m')[1][:-4], format="%Y.%m.%d_%H.%M.%S")
                     window_end = window_start + pd.Timedelta(hours = 23, minutes = 59, seconds = 59)
 
@@ -51,12 +51,16 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
                             else:
                                 target = 0
 
-                    lis.append([window_start, ins, target])
-        
+                    lis.append([window_start,
+                                file, 
+                                ins, 
+                                target])
+
+    cols = ['timestep', 'path', 'goes_class', 'label']
     df_out = pd.DataFrame(lis, columns = cols)
 
     # df_out['Timestamp'] = pd.to_datetime(df_out['Timestamp'], format='%Y-%m-%d %H:%M:%S')
-    df_out['Timestamp'] = df_out['Timestamp'].dt.strftime('%Y-%m-%d %H:%M:%S')
+    df_out['timestep'] = df_out['timestep'].dt.strftime('%Y-%m-%d %H:%M:%S')
 
     return df_out
 
@@ -66,15 +70,17 @@ def split_dataset(df, savepath = '/', class_type = 'bin'):
     search_list = [['2011', '2012', '2013'], ['2014']]
     for i in range(2):
         search_for = search_list[i]
-        mask = df['Timestamp'].apply(lambda row: row[0:4]).str.contains('|'.join(search_for))
+        mask = df['timestep'].apply(lambda row: row[0:4]).str.contains('|'.join(search_for))
         partition = df[mask]
         print(partition['label'].value_counts())
         
             
         # Dumping the dataframe into CSV with label as Date and goes_class as intensity
         flag = 'train' if i == 0 else 'test'
-        partition.to_csv(savepath + f'/24image_{class_type}_class_{flag}.csv',\
-                         index = False, header = True, columns = ['Timestamp', 'goes_class', 'label'])
+        partition.to_csv(savepath + f'/{class_type}_classification_{flag}_12min.csv',
+                        index = False, 
+                        header = True, 
+                        columns = ['timestep', 'path', 'goes_class', 'label'])
 
 
 if __name__ == "__main__":
@@ -91,5 +97,11 @@ if __name__ == "__main__":
     savepath = os.getcwd()
 
     #Calling functions in order
-    df_res = hourly_obs(df_fl = df_fl, img_dir = args.data_path + 'hmi_jpgs_512/', start = args.start, stop = args.end, class_type = 'bin')
+    df_res = hourly_obs(
+        df_fl = df_fl, 
+        img_dir = args.data_path + 'hmi_jpgs_512/', 
+        start = args.start, 
+        stop = args.end, 
+        class_type = 'bin'
+        )
     split_dataset(df_res, savepath = savepath, class_type = 'bin')

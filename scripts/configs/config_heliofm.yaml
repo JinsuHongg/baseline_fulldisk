@@ -1,0 +1,93 @@
+job_id: finetuning_0.1
+data:
+  train_data_path: ./baseline_fulldisk/scripts/data/bin_classification_train_12min.csv
+  valid_data_path: ./baseline_fulldisk/scripts/data/bin_classification_test_12min.csv
+  #CCC Config
+  #train_data_path: /dccstor/gen4sci/shared/datasets/HelioFM/index.csv
+  #valid_data_path: /dccstor/gen4sci/shared/datasets/HelioFM/index.csv
+  channels: ['hmi']
+  time_delta_input_minutes: [0]
+  time_delta_target_minutes: +60
+  # n_input_timestamps: 1 #Optional integer to randomly sample time_delta_input_minutes
+  # batch_size: 16
+  num_data_workers: 2
+  prefetch_factor: null
+  scalers_path: ./HelioFM/configs/scale_2013_2014.yaml
+
+model:
+  model_type: solarflare # Options: unet, spectformer, latent_space_transformer, persistence, flow
+  # Spectformer options
+  img_size: 512
+  patch_size: 16
+  in_channels: 1
+  time_embedding:
+    type: linear      # Options: linear, fourier, perceiver
+    n_queries: null   # Integer for perceiver; otherwise null
+    time_dim: 1       # Integer for linear and fourier; otherwise null
+  unet_embed_dim: null
+  unet_blocks: null
+  unet_concat_activations: false # Whether to concatenate activations (UNet) or not (Autoencoder/bottleneck) in the decoder
+  embed_dim: 1024
+  depth: 8
+  spectral_blocks: 4
+  num_heads: 5
+  mlp_ratio: 4.0
+  rpe: false
+  drop_rate: 0.0
+  window_size: 2
+  dp_rank: 4
+  learned_flow: false
+  epochs_to_learn_flow: 0 # Start by training flow model only before freezing
+  init_weights: false
+  checkpoint_layers: []
+metrics:
+  channel_order: ["hmi"]
+  cdelt: 0.6
+  rsun: 976.0
+  limb_radius: 0.9
+  distance_to_sun: 1.0
+  train_metrics_config:
+    channels_to_report: ["hmi"]
+    metrics_to_report_in_normalized_units: []
+    metrics_to_report_in_natural_units_aia: []
+    metrics_to_report_in_natural_units_hmi: ["D|UnsignedFlux|", "DSignedFlux"]
+    segments_to_report_aia: []
+    segments_to_report_hmi: ["global"]
+  validation_metrics_config:
+    channels_to_report: ["hmi"]
+    metrics_to_report_in_normalized_units: ["MSE"]
+    metrics_to_report_in_natural_units_aia: ["MSE"]
+    metrics_to_report_in_natural_units_hmi: ["MSE", "D|UnsignedFlux|", "DSignedFlux"]
+    segments_to_report_aia: ["global"]
+    segments_to_report_hmi: ["global", "limb", "disk_center"]
+optimizer:
+  warm_up_steps: 0 #2000
+  max_epochs: 20
+  learning_rate: 0.0001
+  min_lr: 0.0000001
+use_latitude_in_learned_flow: false
+# from_checkpoint: <PATH TO BEST CHECKPOINT linembed-input1_0.1>
+rollout_steps: 0
+num_mask_aia_channels: 0
+drop_hmi_probablity: 0.0
+validate_after_epoch: 1
+wandb_log_train_after: 5 # This should be less than iters_per_epoch_train
+save_wt_after_iter: 100
+path_experiment: checkpoints
+iters_per_epoch_train: 30
+iters_per_epoch_valid: 30
+iters_grad_accum: 1
+dtype: float32
+parallelism: ddp # Valid options: "ddp" and "fsdp"
+finetune: True
+#weight_path: "./HelioFM/checkpoints/epoch_14_loss_0.129.pth"
+#pretrained_path: "./HelioFM/checkpoints/epoch_14_loss_0.129.pth"
+pretrained_path: /lustre/fs0/scratch/johannes/pretraining_0.1/checkpoints/pretraining_0.1/weights/epoch_35_loss_0.128.pth
+nglo: 0
+global_average_pooling: False
+global_max_pooling: True
+attention_pooling: False
+transformer_pooling: False
+penultimate_linear_layer: True
+freeze_backbone: True
+dropout: 0.2

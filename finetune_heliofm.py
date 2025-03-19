@@ -41,6 +41,13 @@ args, config = get_args(
 )
 crr_dir = os.getcwd() + "/baseline_fulldisk/"
 
+print(f"Model: {args.models}")
+print(
+    f"Hyper parameters: batch_size: {args.batch_size}, number of epoch: {args.epochs}"
+)
+print(f"learning rate: {args.lr}, max learning rate: {args.max_lr}")
+print(f"class weight: {args.class_weight}, decay value: {args.weight_decay}")
+
 data_train = heliofm_FLDataset(
         index_path=config.data.train_data_path,
         fl_path=config.data.train_data_path,
@@ -114,7 +121,7 @@ for wt in args.weight_decay:
         device = next(model.parameters()).device
         class_weights = torch.tensor([1.0, cls_wt], dtype=torch.float).to(device)
         # loss_fn = nn.CrossEntropyLoss(weight = class_weights)
-        loss_fn = nn.functional.binary_cross_entropy 
+        loss_fn = nn.BCELoss(weight = class_weights)
         optimizer = torch.optim.SGD(model.parameters(), lr = args.lr, weight_decay = wt) 
         #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor = 0.5, patience = 5)
         scheduler = torch.optim.lr_scheduler.OneCycleLR(
@@ -124,7 +131,7 @@ for wt in args.weight_decay:
                     epochs = args.epochs, # The number of epochs to train for.
                     anneal_strategy = 'cos',
                     pct_start=0.7,
-                    div_factor=1e5
+                    div_factor=args.div_factor
                     )
 
         # initiate variable for finding best epoch

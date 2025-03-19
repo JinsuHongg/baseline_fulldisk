@@ -41,7 +41,7 @@ args, config = get_args(
 )
 crr_dir = os.getcwd() + "/baseline_fulldisk/"
 
-print(f"Model: {args.models}")
+print(f"Model: Spectformer")
 print(
     f"Hyper parameters: batch_size: {args.batch_size}, number of epoch: {args.epochs}"
 )

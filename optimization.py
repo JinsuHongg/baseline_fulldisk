@@ -33,16 +33,6 @@ print("2nd process, loading data...")
 # create parser here
 parser = argparse.ArgumentParser(description="FullDiskModelTrainer")
 # parser.add_argument("--fold", type = int, default = 1, help = "Fold Selection")
-<<<<<<< HEAD
-parser.add_argument("--epochs", type = int, default = 20, help = "number of epochs")
-parser.add_argument("--batch_size", type = int, default = 16, help = "batch size")
-parser.add_argument("--lr", type = float, default = 1e-5, help = "learning rate")
-parser.add_argument("--max_lr", type = float, default = 1e-5, help = "MAX learning rate")
-parser.add_argument("--models", type = str, default = 'Alexnet', help = "Enter Mobilenet, Resnet18, Resnet34, Resnet50")
-parser.add_argument('--class_wt', type = list, default = list, help = "class weight on each class")
-parser.add_argument('--data_dir', type = str, default = '/workspace/data/hmi_jpgs_512')
-parser.add_argument('--filetag', type=str, default='12min_lowerlr')
-=======
 parser.add_argument("--epochs", type=int, default=30, help="number of epochs")
 parser.add_argument("--batch_size", type=int, default=64, help="batch size")
 parser.add_argument("--lr", type=float, default=1e-9, help="learning rate")
@@ -58,7 +48,6 @@ parser.add_argument(
 )
 parser.add_argument("--data_dir", type=str, default="/workspace/data/hmi_jpgs_512")
 parser.add_argument("--filetag", type=str, default="over-aug")
->>>>>>> main
 
 args = parser.parse_args()
 
@@ -102,15 +91,9 @@ print(
 print(f"learning rate: {args.lr}, max learning rate: {args.max_lr}")
 print(f"class weight: {class_weight}, decay value: {weight_decay}")
 
-<<<<<<< HEAD
 # Define dataset here! 
 train_file = f'24image_bin_class_train_12min.csv'
 test_file = f'24image_bin_class_test_12min.csv'
-=======
-# Define dataset here!
-train_file = f"24image_bin_class_train.csv"
-test_file = f"24image_bin_class_test.csv"
->>>>>>> main
 
 # train set
 df_train = pd.read_csv(crr_dir + "scripts/data/" + train_file)
@@ -168,8 +151,8 @@ for wt in weight_decay:
         [ Grid search start here ]
         - Be careful with  result array, model, loss, and optimizer
         - Their position matters
-
         """
+
         # define model here
         if args.models == "Alexnet":
             net = Alexnet().to(device)
@@ -255,6 +238,7 @@ for wt in weight_decay:
             check_hsstss = (HSS_score * TSS_score) ** 0.5
             if best_hsstss < check_hsstss:
                 best_hsstss = check_hsstss
+                best_epoch = t + 1
                 best_loss = test_loss
 
                 PATH = (

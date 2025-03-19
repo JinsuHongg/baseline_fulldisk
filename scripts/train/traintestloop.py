@@ -93,7 +93,6 @@ def test_loop(dataloader, model, loss_fn):
 
     # print(f"Test loss: {test_loss:.4f}")
     return test_loss, pred_arr
-<<<<<<< HEAD
 
 def train_loop_spectformer(dataloader, model, loss_fn, optimizer=None, lr_scheduler=None):
     # Set the model to training mode - important for batch normalization and dropout layers
@@ -165,5 +164,3 @@ def test_loop_spectformer(dataloader, model, loss_fn):
 
     # print(f"Test loss: {test_loss:.4f}")
     return test_loss, pred_arr
-=======
->>>>>>> main

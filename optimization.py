@@ -126,7 +126,6 @@ df_test["Timestamp"] = pd.to_datetime(df_test["Timestamp"], format="%Y-%m-%d %H:
 
 # Define dataset
 # trainset, image augmentation
-<<<<<<< HEAD
 positive_ins = df_train.loc[df_train['label']==1, :]
 negative_ins = df_train.loc[df_train['label']==0, :]
 df_pos = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, normalization = True)
@@ -142,89 +141,12 @@ df_neg = SolarFlSets(annotations_df = negative_ins, num_sample=None, img_dir = i
 # df_n_over = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, normalization = True)
 
 data_train = ConcatDataset([df_pos, df_rotation, df_vrflip, df_hrflip, df_over, df_neg]) #, df_n_rotation, df_n_vrflip, df_n_hrflip
-=======
-positive_ins = df_train.loc[df_train["label"] == 1, :]
-negative_ins = df_train.loc[df_train["label"] == 0, :]
-df_pos = SolarFlSets(annotations_df=positive_ins, img_dir=img_dir, normalization=True)
-df_rotation = SolarFlSets(
-    annotations_df=positive_ins,
-    num_sample=2000,
-    img_dir=img_dir,
-    transform=rotation,
-    normalization=True,
-)
-df_vrflip = SolarFlSets(
-    annotations_df=positive_ins,
-    num_sample=2000,
-    img_dir=img_dir,
-    transform=vr_flip,
-    normalization=True,
-)
-df_hrflip = SolarFlSets(
-    annotations_df=positive_ins,
-    num_sample=2000,
-    img_dir=img_dir,
-    transform=hr_flip,
-    normalization=True,
-)
-df_over = SolarFlSets(
-    annotations_df=positive_ins, num_sample=2000, img_dir=img_dir, normalization=True
-)
-
-df_neg = SolarFlSets(annotations_df=negative_ins, img_dir=img_dir, normalization=True)
-df_n_rotation = SolarFlSets(
-    annotations_df=negative_ins,
-    num_sample=1000,
-    img_dir=img_dir,
-    transform=rotation,
-    normalization=True,
-)
-df_n_vrflip = SolarFlSets(
-    annotations_df=negative_ins,
-    num_sample=1000,
-    img_dir=img_dir,
-    transform=vr_flip,
-    normalization=True,
-)
-df_n_hrflip = SolarFlSets(
-    annotations_df=negative_ins,
-    num_sample=1000,
-    img_dir=img_dir,
-    transform=hr_flip,
-    normalization=True,
-)
-# df_n_over = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, normalization = True)
-
-data_train = ConcatDataset(
-    [
-        df_pos,
-        df_rotation,
-        df_vrflip,
-        df_hrflip,
-        df_over,
-        df_neg,
-        df_n_rotation,
-        df_n_vrflip,
-        df_n_hrflip,
-    ]
-)
->>>>>>> main
 # testset
 data_test = SolarFlSets(annotations_df=df_test, img_dir=img_dir, normalization=True)
 
-<<<<<<< HEAD
 num_pos = len(df_pos)+len(df_rotation)+len(df_vrflip)+len(df_hrflip)+len(df_over)
 num_neg = len(df_neg) #+len(df_n_rotation)+len(df_n_vrflip)+len(df_n_hrflip)
 print(f'positive samples: {num_pos}, negative samples: {num_neg}, imbalance ratio: {num_pos/num_neg:.2f}')
-=======
-num_pos = (
-    len(df_pos) + len(df_rotation) + len(df_vrflip) + len(df_hrflip) + len(df_over)
-)
-num_neg = len(df_neg) + len(df_n_rotation) + len(df_n_vrflip) + len(df_n_hrflip)
-print(
-    f"positive samples: {num_pos}, negative samples: {num_neg}, imbalance ratio: {num_pos/num_neg:.2f}"
-)
->>>>>>> main
 
 # Data loader
 train_dataloader = DataLoader(
@@ -246,12 +168,8 @@ for wt in weight_decay:
         [ Grid search start here ]
         - Be careful with  result array, model, loss, and optimizer
         - Their position matters
-<<<<<<< HEAD
-        '''
-=======
 
         """
->>>>>>> main
         # define model here
         if args.models == "Alexnet":
             net = Alexnet().to(device)
@@ -274,7 +192,6 @@ for wt in weight_decay:
         # class weight
         device = next(model.parameters()).device
         class_weights = torch.tensor([1.0, cls_wt], dtype=torch.float).to(device)
-<<<<<<< HEAD
         loss_fn = nn.CrossEntropyLoss(weight = class_weights) 
         optimizer = torch.optim.SGD(model.parameters(), lr = args.lr, weight_decay = wt) 
         #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor = 0.5, patience = 5)
@@ -288,26 +205,6 @@ for wt in weight_decay:
 
         # initiate variable for finding best epoch
         iter += 1
-=======
-        loss_fn = nn.CrossEntropyLoss(weight=class_weights)
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.lr, weight_decay=wt)
-        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode = 'min', factor = 0.5, patience = 5)
-        scheduler = torch.optim.lr_scheduler.OneCycleLR(
-            optimizer,
-            max_lr=args.max_lr,  # Upper learning rate boundaries in the cycle for each parameter group
-            steps_per_epoch=len(
-                train_dataloader
-            ),  # The number of steps per epoch to train for.
-            epochs=args.epochs,  # The number of epochs to train for.
-            anneal_strategy="cos",
-        )
-
-        # initiate variable for finding best epoch
-        iter += 1
-        best_loss = float("inf")
-        best_epoch = 0
-        best_hsstss = 0
->>>>>>> main
         for t in range(args.epochs):
 
             # extract current time and compute training time
@@ -358,10 +255,6 @@ for wt in weight_decay:
             check_hsstss = (HSS_score * TSS_score) ** 0.5
             if best_hsstss < check_hsstss:
                 best_hsstss = check_hsstss
-<<<<<<< HEAD
-=======
-                best_epoch = t + 1
->>>>>>> main
                 best_loss = test_loss
 
                 PATH = (

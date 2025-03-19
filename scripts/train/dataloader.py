@@ -55,7 +55,6 @@ class SolarFlSets(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         if self.norm:
-<<<<<<< HEAD
             image = image / 255 # zero to one normalization
         return image, label
 
@@ -250,7 +249,3 @@ class heliofm_FLDataset:
             data[idx] = self.scalers[channel].signum_log_transform(data[idx])
 
         return torch.tensor(data, dtype=torch.float32)
-=======
-            image = image / 255  # zero to one normalization
-        return image, label
->>>>>>> main

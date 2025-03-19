@@ -85,7 +85,6 @@ print(
 print(f"learning rate: {args.lr}, max learning rate: {args.max_lr}")
 print(f"class weight: {class_weight}, decay value: {weight_decay}")
 
-
 # Define dataset here! 
 train_file = f'24image_bin_class_train_12min.csv'
 test_file = f'24image_bin_class_test_12min.csv'
@@ -104,7 +103,6 @@ df_test["Timestamp"] = pd.to_datetime(df_test["Timestamp"], format="%Y-%m-%d %H:
 
 # Define dataset
 # trainset, image augmentation
-
 positive_ins = df_train.loc[df_train['label']==1, :]
 negative_ins = df_train.loc[df_train['label']==0, :]
 df_pos = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, normalization = True)
@@ -120,7 +118,6 @@ df_neg = SolarFlSets(annotations_df = negative_ins, num_sample=None, img_dir = i
 # df_n_over = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, normalization = True)
 
 data_train = ConcatDataset([df_pos, df_rotation, df_vrflip, df_hrflip, df_over, df_neg]) #, df_n_rotation, df_n_vrflip, df_n_hrflip
-
 # testset
 data_test = SolarFlSets(annotations_df=df_test, img_dir=img_dir, normalization=True)
 
@@ -148,7 +145,6 @@ for wt in weight_decay:
         [ Grid search start here ]
         - Be careful with  result array, model, loss, and optimizer
         - Their position matters
-
         """
 
         # define model here
@@ -186,7 +182,6 @@ for wt in weight_decay:
 
         # initiate variable for finding best epoch
         iter += 1
-
         for t in range(args.epochs):
 
             # extract current time and compute training time

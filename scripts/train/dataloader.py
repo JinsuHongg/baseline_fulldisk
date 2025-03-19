@@ -55,7 +55,6 @@ class SolarFlSets(Dataset):
         if self.target_transform:
             label = self.target_transform(label)
         if self.norm:
-
             image = image / 255 # zero to one normalization
         return image, label
 

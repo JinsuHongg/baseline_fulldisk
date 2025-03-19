@@ -19,8 +19,8 @@ from torch.utils.data import DataLoader, ConcatDataset
 # from downstream_heliofm.HelioFM.datasets.helio import SolarFlareDataset
 from downstream_heliofm.HelioFM.models.helio_spectformer import HelioSolarFlare
 from .scripts.configs import get_args
-from .scripts.model import Alexnet, Mobilenet, ResNet18, ResNet34, ResNet50
-from .scripts.train import SolarFlSets, heliofm_FLDataset, HSS2, TSS, F1Pos, train_loop, test_loop, train_loop_spectformer, test_loop_spectformer
+# from .scripts.model import Alexnet, Mobilenet, ResNet18, ResNet34, ResNet50
+from .scripts.train import SolarFlSets, heliofm_FLDataset, HSS2, TSS, train_loop_spectformer, test_loop_spectformer
 
 # CUDA for PyTorch
 use_cuda = torch.cuda.is_available()
@@ -39,42 +39,7 @@ print('2nd process, loading data...')
 args, config = get_args(
     config_dir="./baseline_fulldisk/scripts/configs/config_heliofm.yaml"
 )
-
-# print(train_dataset[0])
-# print(train_dataset[0]['ts'].size())
-# print(len(train_dataset))
-
-# # define transformations / augmentation
-# rotation = transforms.Compose([
-#     transforms.ToPILImage(),
-#     transforms.RandomRotation(degrees=(-5,5)),
-#     transforms.ToTensor()
-# ])
-
-# hr_flip = transforms.Compose([
-#     transforms.ToPILImage(),
-#     transforms.RandomHorizontalFlip(p=1.0),
-#     transforms.ToTensor()
-# ])
-
-# vr_flip = transforms.Compose([
-#     transforms.ToPILImage(),
-#     transforms.RandomVerticalFlip(p=1.0),
-#     transforms.ToTensor()
-# ])
-
-# # define directory here
-# img_dir = args.img_dir
-# crr_dir = os.getcwd() + '/baseline_fulldisk/'
-
-# # parameter search space
-# weight_decay = [0, 1e-3, 1e-4]
-# class_weight = [1.0, 3.0]
-
-# print(f'Model: Spectformer')
-# print(f'Hyper parameters: batch_size: {args.batch_size}, number of epoch: {args.epochs}')
-# print(f'learning rate: {args.lr}, max learning rate: {args.max_lr}')
-# print(f'class weight: {class_weight}, decay value: {weight_decay}')
+crr_dir = os.getcwd() + "/baseline_fulldisk/"
 
 data_train = heliofm_FLDataset(
         index_path=config.data.train_data_path,
@@ -96,44 +61,6 @@ data_test = heliofm_FLDataset(
         channels=config.data.channels,
     )
 
-# # Define dataset here! 
-# train_file = f'24image_bin_class_train_12min.csv'
-# test_file = f'24image_bin_class_test_12min.csv'
-
-# # train set
-# df_train = pd.read_csv(crr_dir + 'scripts/data/' + train_file)
-
-# # test set and calibration set
-# df_test = pd.read_csv(crr_dir + 'scripts/data/' + test_file)
-
-# # string to datetime
-# df_train['Timestamp'] = pd.to_datetime(df_train['Timestamp'], format = '%Y-%m-%d %H:%M:%S')
-# df_test['Timestamp'] = pd.to_datetime(df_test['Timestamp'], format = '%Y-%m-%d %H:%M:%S')
-
-# # Define dataset
-# # trainset, image augmentation
-# positive_ins = df_train.loc[df_train['label']==1, :]
-# negative_ins = df_train.loc[df_train['label']==0, :]
-# df_pos = SolarFlSets(annotations_df = positive_ins, img_dir = img_dir, normalization = True)
-# df_rotation = SolarFlSets(annotations_df = positive_ins, num_sample=8000, img_dir = img_dir, transform=rotation, normalization = True)
-# df_vrflip = SolarFlSets(annotations_df = positive_ins, num_sample=8000, img_dir = img_dir, transform=vr_flip, normalization = True)
-# df_hrflip = SolarFlSets(annotations_df = positive_ins, num_sample=8000, img_dir = img_dir, transform=hr_flip, normalization = True)
-# df_over = SolarFlSets(annotations_df = positive_ins, num_sample=8000, img_dir = img_dir, normalization = True)
-
-# df_neg = SolarFlSets(annotations_df = negative_ins, num_sample=None, img_dir = img_dir, normalization = True)
-# # df_n_vrflip = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, transform=vr_flip, normalization = True)
-# # df_n_rotation = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, transform=rotation, normalization = True)
-# # df_n_hrflip = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, transform=hr_flip, normalization = True)
-# # df_n_over = SolarFlSets(annotations_df = negative_ins, num_sample=1000, img_dir = img_dir, normalization = True)
-
-# data_train = ConcatDataset([df_pos, df_rotation, df_vrflip, df_hrflip, df_over, df_neg]) #, df_n_rotation, df_n_vrflip, df_n_hrflip
-# # testset
-# data_test = SolarFlSets(annotations_df = df_test, img_dir = img_dir, normalization = True)
-
-# num_pos = len(df_pos)+len(df_rotation)+len(df_vrflip)+len(df_hrflip)+len(df_over)
-# num_neg = len(df_neg) #+len(df_n_rotation)+len(df_n_vrflip)+len(df_n_hrflip)
-# print(f'positive samples: {num_pos}, negative samples: {num_neg}, imbalance ratio: {num_pos/num_neg:.2f}')
-
 # Data loader
 train_dataloader = DataLoader(data_train, batch_size = args.batch_size, shuffle = True) # num_workers = 0, pin_memory = True, 
 test_dataloader = DataLoader(data_test, batch_size = args.batch_size, shuffle = False) # num_workers = 0, pin_memory = True,
@@ -143,6 +70,7 @@ training_result = []
 iter = 0
 best_loss = float("inf") 
 best_hsstss = 0
+
 for wt in args.weight_decay:
     for cls_wt in args.class_weight:
     
@@ -151,22 +79,7 @@ for wt in args.weight_decay:
         - Be careful with  result array, model, loss, and optimizer
         - Their position matters
         '''
-        # define model here
-        # if args.models == 'Alexnet':
-        #     net = Alexnet().to(device)
-        # elif args.models == "Mobilenet":
-        #     net = Mobilenet().to(device)
-        # elif args.models == "Resnet18":
-        #     net = ResNet18().to(device)
-        # elif args.models == "Resnet34":
-        #     net = ResNet34().to(device)
-        # elif args.models == "Resnet50":
-        #     net = ResNet50().to(device)
-        # else:
-        #     print("Model Selected: ", args.models)
-        #     print('Invalid Model')
-        #     exit()
-        
+                
         net = HelioSolarFlare(
             img_size=config.model.img_size,
             patch_size=config.model.patch_size,

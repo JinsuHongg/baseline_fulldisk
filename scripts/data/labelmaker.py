@@ -119,16 +119,9 @@ if __name__ == "__main__":
         "--end", type=int, default="2014", help="end time of the dataset"
     )
     args = parser.parse_args()
-<<<<<<< HEAD
     
     df_fl = pd.read_csv(args.data_path + 'catalog/sdo_era_goes_flares_integrated_all_CME_r1.csv', usecols = ['start_time', 'goes_class'])
-=======
 
-    df_fl = pd.read_csv(
-        args.data_path + "catalog/MultiwayIntegration_2010_to_2018_conf_rxfi.csv",
-        usecols=["start_time", "goes_class"],
-    )
->>>>>>> main
     savepath = os.getcwd()
 
     # Calling functions in order

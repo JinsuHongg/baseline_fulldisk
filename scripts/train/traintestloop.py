@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 def train_loop(dataloader, model, loss_fn, optimizer=None, lr_scheduler=None):
     # Set the model to training mode - important for batch normalization and dropout layers
     # Unnecessary in this situation but added for best practices
@@ -55,15 +56,16 @@ def train_loop(dataloader, model, loss_fn, optimizer=None, lr_scheduler=None):
 
     return float(train_loss), pred_arr
 
+
 def test_loop(dataloader, model, loss_fn):
     # Set the model to evaluation mode - important for batch normalization and dropout layers
     # Unnecessary in this situation but added for best practices
     device = next(model.parameters()).device
     model.eval()
     num_batches = len(dataloader)
-    
+
     test_loss = 0
-    pred_arr = np.empty((0,2), float)
+    pred_arr = np.empty((0, 2), float)
     # Evaluating the model with torch.no_grad() ensures that no gradients are computed during test mode
     # also serves to reduce unnecessary gradient computations and memory usage for tensors with requires_grad=True
     with torch.no_grad():
@@ -71,9 +73,21 @@ def test_loop(dataloader, model, loss_fn):
             X, y = X.to(device), y.to(device)
             pred = model(X)
             _, predictions = torch.max(pred, 1)
-            
-            test_loss += loss_fn(pred, y).item() #torch.nn.functional.log_softmax(pred, dim=1)
-            pred_arr = np.append(pred_arr, np.concatenate( (predictions.unsqueeze(1).cpu().detach().numpy(), y.unsqueeze(1).cpu().detach().numpy()), axis=1), axis=0)
+
+            test_loss += loss_fn(
+                pred, y
+            ).item()  # torch.nn.functional.log_softmax(pred, dim=1)
+            pred_arr = np.append(
+                pred_arr,
+                np.concatenate(
+                    (
+                        predictions.unsqueeze(1).cpu().detach().numpy(),
+                        y.unsqueeze(1).cpu().detach().numpy(),
+                    ),
+                    axis=1,
+                ),
+                axis=0,
+            )
 
     test_loss /= num_batches
 

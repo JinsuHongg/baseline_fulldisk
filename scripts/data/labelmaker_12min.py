@@ -8,6 +8,10 @@ import pandas as pd
 
 #In this function, to create the label, the maximum intensity of flare between midnight to midnight
 #and noon to noon with respective date is used.
+def sub_class_num(df: pd.DataFrame):
+    df['goes_class'].str.contains('C')
+
+
 def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
 
     # Datetime 
@@ -27,8 +31,14 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
                     # print(file)
                     window_start = pd.to_datetime(file.split('HMI.m')[1][:-4], format="%Y.%m.%d_%H.%M.%S")
                     window_end = window_start + pd.Timedelta(hours = 23, minutes = 59, seconds = 59)
+                    window = df_fl[ (df_fl.start_time > window_start) & (df_fl.start_time <= window_end) ]
 
-                    emp = df_fl[ (df_fl.start_time > window_start) & (df_fl.start_time <= window_end) ].sort_values('goes_class', ascending = False).head(1).squeeze(axis = 0)
+                    emp = window.sort_values('goes_class', ascending = False).head(1).squeeze(axis = 0)
+                    cumulative_id = window.loc[window['goes_class'].str.contains('C'), 'goes_num'].sum()
+                    
+                    
+                    
+                    
                     if pd.Series(emp.goes_class).empty:
                         ins = 'FQ'
                         target = 0

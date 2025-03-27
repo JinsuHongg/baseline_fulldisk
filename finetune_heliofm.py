@@ -24,7 +24,7 @@ from .scripts.train import SolarFlSets, heliofm_FLDataset, HSS2, TSS, train_loop
 
 # CUDA for PyTorch
 use_cuda = torch.cuda.is_available()
-device = torch.device('cuda' if use_cuda else 'cpu')
+device = torch.device('cuda:1' if use_cuda else 'cpu')
 torch.backends.cudnn.benchmark = True
 print('1st check cuda..')
 print('Number of available device', torch.cuda.device_count())
@@ -111,14 +111,21 @@ for wt in args.weight_decay:
         finetune=config.finetune,
         nglo=config.nglo,
         config=config,
-    ).to(device)
-    
+    )
 
+    # Load pretrained model
+    # checkpoint_dict = torch.load(config.pretrained_path, map_location=torch.device(device))
+    # # Filter state_dict to only include parameters we want to fine-tune
+    # filtered_checkpoint_state_dict = {k: v for k, v in checkpoint_dict.items() if not k.startswith('classifier')}
+    # model_state_dict = net.state_dict()
+    # model_state_dict.update(filtered_checkpoint_state_dict)
+    # net.load_state_dict(model_state_dict, strict=False)
+    
     # model setting
-    model = nn.DataParallel(net, device_ids = [0]).to(device)
+    model = nn.DataParallel(net, device_ids = [1]).to(device)
 
     # class weight
-    device = next(model.parameters()).device
+    # device = next(model.parameters()).device
     # class_weights = torch.tensor([1.0, cls_wt], dtype=torch.float).to(device)
     # loss_fn = nn.CrossEntropyLoss(weight = class_weights)
     loss_fn = nn.BCELoss()
@@ -160,30 +167,30 @@ for wt in args.weight_decay:
         # time consumption and report R-squared values.
         print(f'Epoch {t+1}: Lr: {actual_lr:.3e}, Train loss: {train_loss:.4f}, Test loss: {test_loss:.4f}, HSS: {HSS_score:.4f}, TSS: {TSS_score:.4f}, F1: {F1_score:.4f}, Duration(min):  {duration:.2f}')
 
-        check_hsstss = (HSS_score * TSS_score)**0.5
-        if best_hsstss < check_hsstss:
-            best_hsstss = check_hsstss
-            best_loss = test_loss
+        # check_hsstss = (HSS_score * TSS_score)**0.5
+        # if best_hsstss < check_hsstss:
+        #     best_hsstss = check_hsstss
+        #     best_loss = test_loss
 
-            PATH = crr_dir + 'results/trained/' + f"{args.models}_{year}{month:02d}_train2011to2013_test2024_{args.filetag}_{iter}.pth"
-        # save model
-            torch.save({
-                    'epoch': t,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'training loss': train_loss,
-                    'testing loss' : test_loss,
-                    'HSS_test' : HSS_score,
-                    'TSS_test' : TSS_score,
-                    'F1_macro' : F1_score
-                    }, PATH)
+        #     PATH = crr_dir + 'results/trained/' + f"{args.models}_{year}{month:02d}_train2011to2013_test2024_{args.filetag}_{iter}.pth"
+        # # save model
+        #     torch.save({
+        #             'epoch': t,
+        #             'model_state_dict': model.state_dict(),
+        #             'optimizer_state_dict': optimizer.state_dict(),
+        #             'training loss': train_loss,
+        #             'testing loss' : test_loss,
+        #             'HSS_test' : HSS_score,
+        #             'TSS_test' : TSS_score,
+        #             'F1_macro' : F1_score
+        #             }, PATH)
             
-            # save prediction array
-            pred_path = crr_dir + 'results/prediction/' + f'{args.models}_{year}{month:02d}_train2011to2013_test2024_{args.filetag}_{iter}.npy'
+        #     # save prediction array
+        #     pred_path = crr_dir + 'results/prediction/' + f'{args.models}_{year}{month:02d}_train2011to2013_test2024_{args.filetag}_{iter}.npy'
             
-            with open(pred_path, 'wb') as f:
-                train_log = np.save(f, train_result)
-                test_log = np.save(f, test_result)
+        #     with open(pred_path, 'wb') as f:
+        #         train_log = np.save(f, train_result)
+        #         test_log = np.save(f, test_result)
 
 training_result.append([f'Hyper parameters: batch_size: {args.batch_size}, number of epoch: {args.epochs}, initial learning rate: {args.lr}'])
 
@@ -192,7 +199,7 @@ training_result.append([f'Hyper parameters: batch_size: {args.batch_size}, numbe
 df_result = pd.DataFrame(training_result, columns=['Epoch', 'learning rate', 'weight decay', 'Train_loss', 'Test_loss',
                                                     'HSS', 'TSS', 'F1_macro', 'Training-testing time(min)'])
 
-total_save_path = crr_dir + 'results/validation/' + f'{args.models}_{year}{month:02d}_validation_{args.filetag}_results.csv'
+total_save_path = crr_dir + 'results/validation/' + f'spectformer_{year}{month:02d}_validation_{args.file_tag}_results.csv'
 
 print('Save file here:', total_save_path)
 df_result.to_csv(total_save_path, index = False) 

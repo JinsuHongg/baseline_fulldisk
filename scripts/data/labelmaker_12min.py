@@ -3,20 +3,40 @@
 import glob
 import argparse
 import os.path, os
+import numpy as np
 import pandas as pd
 # pd.options.mode.chained_assignment = None 
 
 #In this function, to create the label, the maximum intensity of flare between midnight to midnight
 #and noon to noon with respective date is used.
 def sub_class_num(df: pd.DataFrame):
-    df['goes_class'].str.contains('C')
+    # Extract the numeric part after the class (C/M/X) and convert to float
+    numeric_part = df['goes_class'].str[1:].astype(float)
 
+    # Use np.select for multiple conditions to avoid repeated operations
+    conditions = [
+        df['goes_class'].str.startswith('C'),
+        df['goes_class'].str.startswith('M'),
+        df['goes_class'].str.startswith('X')
+    ]
+
+    # Corresponding choices based on class
+    choices = [
+        numeric_part,            # C-class: same value
+        10 * numeric_part,       # M-class: multiply by 10
+        100 * numeric_part       # X-class: multiply by 100
+    ]
+
+    # Assign to sub_cls using np.select
+    df['sub_cls'] = np.select(conditions, choices, default=None)
 
 def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
 
     # Datetime 
     df_fl['start_time'] = pd.to_datetime(df_fl['start_time'], format = '%Y-%m-%d %H:%M:%S')
 
+    # Create sub-class column
+    sub_class_num(df_fl)
 
     #List to store intermediate results
     lis = []
@@ -34,11 +54,9 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
                     window = df_fl[ (df_fl.start_time > window_start) & (df_fl.start_time <= window_end) ]
 
                     emp = window.sort_values('goes_class', ascending = False).head(1).squeeze(axis = 0)
-                    cumulative_id = window.loc[window['goes_class'].str.contains('C'), 'goes_num'].sum()
-                    
-                    
-                    
-                    
+                    cumulative_index = window['sub_cls'].sum()
+
+                    # 1) define binary index from max flare class
                     if pd.Series(emp.goes_class).empty:
                         ins = 'FQ'
                         target = 0
@@ -61,12 +79,15 @@ def hourly_obs(df_fl: pd.DataFrame, img_dir, start, stop, class_type = 'bin'):
                             else:
                                 target = 0
 
-                    lis.append([window_start,
-                                file, 
-                                ins, 
-                                target])
+                    # 2) define binary index from cumulative flare class
+                    if cumulative_index >= 10:
+                        target_cumulative = 1
+                    else:
+                        target_cumulative = 0
 
-    cols = ['timestep', 'path', 'goes_class', 'label']
+                    lis.append([window_start, f"hmi/{year}/{month:02d}/{day:02d}/" + file.split('/')[-1], ins, cumulative_index, target, target_cumulative])
+
+    cols = ['timestep', 'path', 'goes_class', 'cumulative_index', 'label_max', 'label_cum']
     df_out = pd.DataFrame(lis, columns = cols)
 
     # df_out['Timestamp'] = pd.to_datetime(df_out['Timestamp'], format='%Y-%m-%d %H:%M:%S')
@@ -92,18 +113,17 @@ def split_dataset(df, savepath = '/', class_type = 'bin'):
                         header = True, 
                         columns = ['timestep', 'path', 'goes_class', 'label'])
 
-
 if __name__ == "__main__":
 
     #Load Original source for Goes Flare X-ray Flux 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="/workspace/data/", help="Path to data folder")
-    parser.add_argument("--project_path", type=str, default="/workspace/Project/baseline_fulldisk", help="Path to project folder")
+    parser.add_argument("--data_path", type=str, default="/media/jh/maxone/Research/GSU/Research1_xray_flux/", help="Path to data folder")
+    parser.add_argument("--project_path", type=str, default="/home/jh/2python_pr/baseline_fulldisk/", help="Path to project folder")
     parser.add_argument("--start", type=int, default='2011', help="start time of the dataset")
     parser.add_argument("--end", type=int, default='2014', help="end time of the dataset")
     args = parser.parse_args()
     
-    df_fl = pd.read_csv(args.data_path + 'catalog/sdo_era_goes_flares_integrated_all_CME_r1.csv', usecols = ['start_time', 'goes_class'])
+    df_fl = pd.read_csv(args.data_path + 'sdo_era_goes_flares_integrated_all_CME_r1.csv', usecols = ['start_time', 'goes_class'])
     savepath = os.getcwd()
 
     #Calling functions in order
